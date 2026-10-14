@@ -64,6 +64,13 @@ public class ScreenshotManagerScreen extends Screen {
     private static final long DOUBLE_CLICK_MS = 350;
     private static final long TOOLTIP_DELAY_MS = 550;
     private static final long VIEWER_FADE_MS = 180;
+    private static final float ZOOM_MIN = 1f;
+    private static final float ZOOM_MAX = 8f;
+    private static final float ZOOM_STEP = 1.22f;
+    private static final float ZOOM_DOUBLE_CLICK = 2.5f;
+    private static final float ZOOM_SMOOTHING = 16f;
+    private static final long ZOOM_HUD_MS = 1600;
+    private static final int ZOOM_TEXTURE_SIDE = 4096;
     private static final long THUMB_FADE_MS = 240;
     private static final long LONG_PRESS_MS = 650;
     private static final long PRESS_FEEDBACK_DELAY_MS = 250;
@@ -159,6 +166,23 @@ public class ScreenshotManagerScreen extends Screen {
     private @Nullable String pendingTooltip;
     private Rect viewerImage = new Rect(0, 0, 0, 0);
 
+    // viewer zoom: 1.0 = image fitted into the frame (100%)
+    private float zoom = 1f;
+    private float zoomTarget = 1f;
+    private float panX;
+    private float panY;
+    private float panTargetX;
+    private float panTargetY;
+    private boolean panning;
+    private int panLastX;
+    private int panLastY;
+    private boolean ctrlDown;
+    private float zoomHud;
+    private long zoomHudSince;
+    private long lastViewerClickMillis;
+    private float frameDt;
+    private @Nullable Path zoomFile;
+
     // select mode
     private boolean selectMode;
     private final Set<Path> checked = new LinkedHashSet<>();
@@ -248,6 +272,7 @@ public class ScreenshotManagerScreen extends Screen {
         ScreenMouseEvents.allowMouseRelease(this).register(this::onRelease);
         ScreenMouseEvents.allowMouseScroll(this).register(this::onScroll);
         ScreenKeyboardEvents.allowKeyPress(this).register(this::onKey);
+        ScreenKeyboardEvents.allowKeyRelease(this).register(this::onKeyRelease);
 
         rebuildLayout();
         updateButtons();
@@ -898,11 +923,90 @@ public class ScreenshotManagerScreen extends Screen {
         if (shot < 0 || shot >= shots.size()) return;
         viewer = shot;
         viewerOpenedMillis = System.currentTimeMillis();
+        resetZoomInstant();
         select(shot, true);
     }
 
     private void closeViewer() {
         viewer = -1;
+        resetZoomInstant();
+    }
+
+    // ---------- viewer zoom ----------
+
+    private void resetZoomInstant() {
+        zoom = 1f;
+        zoomTarget = 1f;
+        panX = panY = panTargetX = panTargetY = 0f;
+        panning = false;
+        zoomHud = 0f;
+        zoomHudSince = 0L;
+        lastViewerClickMillis = 0L;
+        zoomFile = null;
+    }
+
+    private static float clampF(float value, float min, float max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    /** zoom to {@code target}, keeping the point under (cx, cy) in place */
+    private void zoomAt(float target, double cx, double cy) {
+        Rect f = viewerImage;
+        target = clampF(target, ZOOM_MIN, ZOOM_MAX);
+        zoomHudSince = System.currentTimeMillis();
+        if (Math.abs(target - zoomTarget) < 1e-4f) return;
+        double px = clampF((float) cx, f.x(), f.x() + f.w()) - (f.x() + f.w() / 2.0);
+        double py = clampF((float) cy, f.y(), f.y() + f.h()) - (f.y() + f.h() / 2.0);
+        float ratio = target / zoomTarget;
+        panTargetX = (float) (px - (px - panTargetX) * ratio);
+        panTargetY = (float) (py - (py - panTargetY) * ratio);
+        zoomTarget = target;
+        clampTargetPan();
+    }
+
+    private void zoomAtCenter(float target) {
+        Rect f = viewerImage;
+        zoomAt(target, f.x() + f.w() / 2.0, f.y() + f.h() / 2.0);
+    }
+
+    private void clampTargetPan() {
+        Rect f = viewerImage;
+        float maxX = f.w() * (zoomTarget - 1f) / 2f;
+        float maxY = f.h() * (zoomTarget - 1f) / 2f;
+        panTargetX = clampF(panTargetX, -maxX, maxX);
+        panTargetY = clampF(panTargetY, -maxY, maxY);
+    }
+
+    private void updateZoom(int mouseX, int mouseY) {
+        Rect f = viewerImage;
+        if (panning) {
+            float dx = mouseX - panLastX;
+            float dy = mouseY - panLastY;
+            panLastX = mouseX;
+            panLastY = mouseY;
+            panTargetX += dx;
+            panTargetY += dy;
+            panX += dx;
+            panY += dy;
+        }
+        clampTargetPan();
+
+        float k = 1f - (float) Math.exp(-frameDt * ZOOM_SMOOTHING);
+        zoom += (zoomTarget - zoom) * k;
+        panX += (panTargetX - panX) * k;
+        panY += (panTargetY - panY) * k;
+        if (Math.abs(zoomTarget - zoom) < 0.0005f) zoom = zoomTarget;
+        if (Math.abs(panTargetX - panX) < 0.05f) panX = panTargetX;
+        if (Math.abs(panTargetY - panY) < 0.05f) panY = panTargetY;
+
+        float maxX = f.w() * (zoom - 1f) / 2f;
+        float maxY = f.h() * (zoom - 1f) / 2f;
+        panX = clampF(panX, -maxX, maxX);
+        panY = clampF(panY, -maxY, maxY);
+
+        boolean hudOn = panning || System.currentTimeMillis() - zoomHudSince < ZOOM_HUD_MS;
+        zoomHud += ((hudOn ? 1f : 0f) - zoomHud) * Math.min(1f, frameDt * 12f);
+        if (!hudOn && zoomHud < 0.01f) zoomHud = 0f;
     }
 
     private void stepViewer(int delta) {
@@ -1010,6 +1114,8 @@ public class ScreenshotManagerScreen extends Screen {
                     stepViewer(1);
                 } else if (closeRect().contains(mx, my) || !viewerImage.contains(mx, my)) {
                     closeViewer();
+                } else {
+                    viewerImageClick(mx, my);
                 }
             }
             return false;
@@ -1094,6 +1200,7 @@ public class ScreenshotManagerScreen extends Screen {
     }
 
     private boolean onRelease(Screen screen, MouseButtonEvent event) {
+        if (event.button() == MouseButtons.LEFT) panning = false;
         if (event.button() == MouseButtons.MIDDLE) {
             if (autoHeld) {
                 autoHeld = false;
@@ -1116,6 +1223,22 @@ public class ScreenshotManagerScreen extends Screen {
         return true;
     }
 
+    private void viewerImageClick(double mx, double my) {
+        long now = System.currentTimeMillis();
+        boolean doubleClick = lastViewerClickMillis != 0 && now - lastViewerClickMillis <= DOUBLE_CLICK_MS;
+        lastViewerClickMillis = doubleClick ? 0L : now;
+        if (doubleClick) {
+            panning = false;
+            zoomAt(zoomTarget > ZOOM_MIN + 0.01f ? ZOOM_MIN : ZOOM_DOUBLE_CLICK, mx, my);
+            return;
+        }
+        if (zoomTarget > ZOOM_MIN + 0.001f) {
+            panning = true;
+            panLastX = (int) Math.floor(mx);
+            panLastY = (int) Math.floor(my);
+        }
+    }
+
     private void updateLongPress(int mouseX, int mouseY) {
         if (pressShot < 0) return;
         if (viewer >= 0 || selectMode || pressShot >= shots.size()
@@ -1135,6 +1258,12 @@ public class ScreenshotManagerScreen extends Screen {
     private boolean onScroll(Screen screen, double mouseX, double mouseY, double horizontal, double vertical) {
         if (autoScroll) stopAutoScroll();
         if (viewer >= 0) {
+            if (ctrlDown) {
+                if (vertical != 0) {
+                    zoomAt(zoomTarget * (float) Math.pow(ZOOM_STEP, vertical), mouseX, mouseY);
+                }
+                return false;
+            }
             stepViewer(vertical > 0 ? -1 : 1);
             return false;
         }
@@ -1146,8 +1275,17 @@ public class ScreenshotManagerScreen extends Screen {
         return true;
     }
 
+    private boolean onKeyRelease(Screen screen, KeyEvent event) {
+        int key = event.key();
+        ctrlDown = key != InputConstants.KEY_LCONTROL && key != InputConstants.KEY_RCONTROL
+                && (event.modifiers() & MOD_CONTROL) != 0;
+        return true;
+    }
+
     private boolean onKey(Screen screen, KeyEvent event) {
         int key = event.key();
+        ctrlDown = key == InputConstants.KEY_LCONTROL || key == InputConstants.KEY_RCONTROL
+                || (event.modifiers() & MOD_CONTROL) != 0;
 
         if (autoScroll && key == InputConstants.KEY_ESCAPE) {
             stopAutoScroll();
@@ -1177,6 +1315,19 @@ public class ScreenshotManagerScreen extends Screen {
             }
             if (key == InputConstants.KEY_DELETE) {
                 deleteSelected();
+                return false;
+            }
+            if (key == InputConstants.KEY_0) {
+                panning = false;
+                zoomAtCenter(ZOOM_MIN);
+                return false;
+            }
+            if (key == InputConstants.KEY_EQUALS) {
+                zoomAtCenter(zoomTarget * ZOOM_STEP);
+                return false;
+            }
+            if (key == InputConstants.KEY_MINUS) {
+                zoomAtCenter(zoomTarget / ZOOM_STEP);
                 return false;
             }
             return true;
@@ -1240,6 +1391,7 @@ public class ScreenshotManagerScreen extends Screen {
         long nowNanos = System.nanoTime();
         float dt = lastNanos == 0 ? 0f : Math.min((nowNanos - lastNanos) / 1_000_000_000f, 0.1f);
         lastNanos = nowNanos;
+        frameDt = dt;
         pendingTooltip = null;
         mouseNowX = mouseX;
         mouseNowY = mouseY;
@@ -1717,12 +1869,20 @@ public class ScreenshotManagerScreen extends Screen {
         int x = areaLeft + (areaWidth - w) / 2;
         int y = areaTop + (areaHeight - h) / 2;
         viewerImage = new Rect(x, y, w, h);
+        if (!info.file().equals(zoomFile)) {
+            resetZoomInstant();
+            zoomFile = info.file();
+        }
+        updateZoom(mouseX, mouseY);
 
         g.fill(x + 4, y + 5, x + w + 4, y + h + 5, withAlpha(0x000000, 0.4f * open));
         g.fill(x - 1, y - 1, x + w + 1, y + h + 1, withAlpha(Theme.border() & 0xFFFFFF, open));
         g.fill(x, y, x + w, y + h, Theme.deep());
         if (loaded != null) {
-            g.blit(RenderPipelines.GUI_TEXTURED, loaded.id(), x, y, 0, 0, w, h, w, h);
+            // zoomed: switch to the full resolution texture as soon as it is ready
+            Loaded sharp = zoom > 1.001f || zoomTarget > 1.001f
+                    ? ScreenshotTextures.get(info, Mode.FIT, ZOOM_TEXTURE_SIDE, ZOOM_TEXTURE_SIDE) : null;
+            drawZoomedImage(g, sharp != null ? sharp : loaded, x, y, w, h);
         } else {
             Loaded fallback = ScreenshotTextures.fallback(info);
             if (fallback != null) {
@@ -1754,10 +1914,102 @@ public class ScreenshotManagerScreen extends Screen {
         drawArrow(g, prevRect(), true, viewer > 0, mouseX, mouseY);
         drawArrow(g, nextRect(), false, viewer < shots.size() - 1, mouseX, mouseY);
 
+        // zoom indicator, mini map, cursor
+        if (loaded != null) {
+            drawZoomHud(g, x, y, w, h);
+            drawMiniMap(g, loaded, x, y, w, h);
+            if (zoomTarget > ZOOM_MIN + 0.001f && viewerImage.contains(mouseX, mouseY)) {
+                if (panning) Cursors.move(g);
+                else Cursors.hand(g);
+            }
+        }
+
         // key hints
-        Component hint = Component.translatable("quickactions.shots.viewer.hint");
+        Component hint = zoomTarget > ZOOM_MIN + 0.001f
+                ? Component.translatable("quickactions.shots.viewer.hint.zoomed")
+                : Component.empty()
+                        .append(Component.translatable("quickactions.shots.viewer.hint"))
+                        .append(Component.literal("   \u00b7   "))
+                        .append(Component.translatable("quickactions.shots.viewer.hint.zoom"));
         g.text(this.font, hint, (this.width - this.font.width(hint)) / 2, this.height - 18,
                 withAlpha(Theme.tone(0.34f) & 0xFFFFFF, open), true);
+    }
+
+    private void drawZoomedImage(GuiGraphicsExtractor g, Loaded tex, int x, int y, int w, int h) {
+        int zw = Math.max(w, Math.round(w * zoom));
+        int zh = Math.max(h, Math.round(h * zoom));
+        int left = Math.round(x + (w - zw) / 2f + panX);
+        int top = Math.round(y + (h - zh) / 2f + panY);
+        boolean zoomed = zw != w || zh != h;
+        if (zoomed) Clip.begin(g, x, y, x + w, y + h);
+        g.blit(RenderPipelines.GUI_TEXTURED, tex.id(), left, top, 0, 0, zw, zh, zw, zh);
+        if (zoomed) Clip.end(g);
+    }
+
+    /** rounded plate: 3 fills that never overlap, so translucent colors stay even */
+    private static void fillPlate(GuiGraphicsExtractor g, int x, int y, int w, int h, int color) {
+        g.fill(x + 1, y, x + w - 1, y + 1, color);
+        g.fill(x, y + 1, x + w, y + h - 1, color);
+        g.fill(x + 1, y + h - 1, x + w - 1, y + h, color);
+    }
+
+    private void drawZoomHud(GuiGraphicsExtractor g, int x, int y, int w, int h) {
+        float a = zoomHud;
+        int pw = 76;
+        int ph = 27;
+        if (a < 0.02f || w < pw + 24 || h < ph + 24) return;
+        int px = x + (w - pw) / 2;
+        int py = y + h - ph - 12;
+
+        fillPlate(g, px - 1, py - 1, pw + 2, ph + 2, withAlpha(Theme.borderStrong() & 0xFFFFFF, a));
+        fillPlate(g, px, py, pw, ph, withAlpha(Theme.deep() & 0xFFFFFF, 0.94f * a));
+
+        boolean atMax = zoom >= ZOOM_MAX - 0.01f;
+        String pct = Math.round(zoom * 100f) + "%";
+        int color = atMax ? Theme.accentLight() : Theme.textBright();
+        g.text(this.font, Component.literal(pct), px + (pw - this.font.width(pct)) / 2, py + 6,
+                withAlpha(color & 0xFFFFFF, a), true);
+
+        // log scale bar: 100% .. 800%
+        int bx = px + 9;
+        int bw = pw - 18;
+        int by = py + ph - 8;
+        g.fill(bx, by, bx + bw, by + 2, withAlpha(Theme.tone(0.2f) & 0xFFFFFF, a));
+        float t = clampF((float) (Math.log(Math.max(zoom, 1f)) / Math.log(ZOOM_MAX)), 0f, 1f);
+        int filled = Math.round(bw * t);
+        if (filled > 0) g.fill(bx, by, bx + filled, by + 2, withAlpha(Theme.accent() & 0xFFFFFF, a));
+    }
+
+    private void drawMiniMap(GuiGraphicsExtractor g, Loaded base, int x, int y, int w, int h) {
+        float a = zoomHud;
+        if (a < 0.02f || zoom <= ZOOM_MIN + 0.01f || w < 180 || h < 110) return;
+        int mw = Math.max(40, Math.min(72, w / 5));
+        int mh = Math.max(24, Math.round(mw * (h / (float) w)));
+        int mx = x + w - mw - 14;
+        int my = y + h - mh - 14;
+
+        fillPlate(g, mx - 1, my - 1, mw + 2, mh + 2, withAlpha(Theme.borderStrong() & 0xFFFFFF, a));
+        g.blit(RenderPipelines.GUI_TEXTURED, base.id(), mx, my, 0, 0, mw, mh, mw, mh);
+        g.fill(mx, my, mx + mw, my + mh, withAlpha(0x000000, 0.5f * a));
+        g.fill(mx, my, mx + mw, my + mh, withAlpha(VIEWER_BACKDROP, 1f - a)); // fades the thumb itself
+
+        float vw = 1f / zoom;
+        float cx = 0.5f - panX / (w * zoom);
+        float cy = 0.5f - panY / (h * zoom);
+        int rx = mx + Math.round((cx - vw / 2f) * mw);
+        int ry = my + Math.round((cy - vw / 2f) * mh);
+        int rw = Math.max(3, Math.round(vw * mw));
+        int rh = Math.max(3, Math.round(vw * mh));
+        rx = Math.max(mx, Math.min(mx + mw - rw, rx));
+        ry = Math.max(my, Math.min(my + mh - rh, ry));
+
+        int accent = Theme.accent() & 0xFFFFFF;
+        g.fill(rx, ry, rx + rw, ry + rh, withAlpha(accent, 0.22f * a));
+        int edge = withAlpha(accent, a);
+        g.fill(rx, ry, rx + rw, ry + 1, edge);
+        g.fill(rx, ry + rh - 1, rx + rw, ry + rh, edge);
+        g.fill(rx, ry + 1, rx + 1, ry + rh - 1, edge);
+        g.fill(rx + rw - 1, ry + 1, rx + rw, ry + rh - 1, edge);
     }
 
     private void prefetchNeighbours(int pxW, int pxH) {

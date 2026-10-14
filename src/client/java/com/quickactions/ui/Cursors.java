@@ -16,4 +16,9 @@ public final class Cursors {
     public static void resizeVertical(GuiGraphicsExtractor g) {
         g.requestCursor(CursorTypes.RESIZE_NS);
     }
+
+    /** four arrows: dragging the zoomed image */
+    public static void move(GuiGraphicsExtractor g) {
+        g.requestCursor(CursorTypes.RESIZE_ALL);
+    }
 }

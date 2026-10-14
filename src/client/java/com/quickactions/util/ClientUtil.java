@@ -8,6 +8,8 @@ import net.minecraft.client.gui.screens.AlertScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
+import java.awt.Desktop;
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
@@ -16,36 +18,56 @@ public final class ClientUtil {
     private ClientUtil() {
     }
 
-    /** open folder/file in OS explorer */
-    public static void openPath(Path path) {
+    private static boolean windows() {
+        return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
+    }
+
+    private static boolean mac() {
+        return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("mac");
+    }
+
+    /** open folder/file in OS explorer; tells the player if nothing worked */
+    public static boolean openPath(Path path) {
+        String target = path.toAbsolutePath().toString();
         try {
-            String target = path.toAbsolutePath().toString();
-            String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
-            if (os.contains("win")) {
-                new ProcessBuilder("explorer.exe", target).start();
-            } else if (os.contains("mac")) {
+            if (windows()) {
+                new ProcessBuilder(PowerShell.systemExe("explorer.exe"), target).start();
+            } else if (mac()) {
                 new ProcessBuilder("open", target).start();
             } else {
                 new ProcessBuilder("xdg-open", target).start();
             }
+            return true;
         } catch (Exception e) {
-            QuickActionsClient.LOGGER.error("Failed to open path: {}", path, e);
+            QuickActionsClient.LOGGER.warn("Primary way to open {} failed, trying java.awt.Desktop", path, e);
         }
+        try {
+            if (!java.awt.GraphicsEnvironment.isHeadless() && Desktop.isDesktopSupported()
+                    && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
+                Desktop.getDesktop().open(new File(target));
+                return true;
+            }
+        } catch (Exception e) {
+            QuickActionsClient.LOGGER.error("Desktop.open failed: {}", path, e);
+        }
+        QuickActionsClient.LOGGER.error("Could not open path in the file manager: {}", path);
+        reportFailure();
+        return false;
     }
 
     /** open link in default browser */
     public static void openUrl(String url) {
         try {
-            String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
-            if (os.contains("win")) {
-                new ProcessBuilder("rundll32", "url.dll,FileProtocolHandler", url).start();
-            } else if (os.contains("mac")) {
+            if (windows()) {
+                new ProcessBuilder(PowerShell.systemExe("System32\\rundll32.exe"), "url.dll,FileProtocolHandler", url).start();
+            } else if (mac()) {
                 new ProcessBuilder("open", url).start();
             } else {
                 new ProcessBuilder("xdg-open", url).start();
             }
         } catch (Exception e) {
             QuickActionsClient.LOGGER.error("Failed to open url: {}", url, e);
+            reportFailure();
         }
     }
 
@@ -56,16 +78,28 @@ public final class ClientUtil {
             QuickActionsClient.LOGGER.error("Failed to create folder: {}", folder, e);
             return false;
         }
-        openPath(folder);
-        return true;
+        return openPath(folder);
     }
 
+    /** select the file in the file manager (Windows); elsewhere open the parent folder */
     public static void showInFolder(Path path) {
-        try {
-            new ProcessBuilder("explorer.exe", "/select,", path.toAbsolutePath().toString()).start();
-        } catch (Exception e) {
-            QuickActionsClient.LOGGER.error("Failed to show in folder: {}", path, e);
+        Path abs = path.toAbsolutePath();
+        if (!windows()) {
+            Path parent = abs.getParent();
+            openPath(parent != null ? parent : abs);
+            return;
         }
+        try {
+            new ProcessBuilder(PowerShell.systemExe("explorer.exe"), "/select,", abs.toString()).start();
+        } catch (Exception e) {
+            QuickActionsClient.LOGGER.warn("explorer /select failed for {}, opening parent folder", path, e);
+            Path parent = abs.getParent();
+            openPath(parent != null ? parent : abs);
+        }
+    }
+
+    private static void reportFailure() {
+        Minecraft.getInstance().execute(Notifications::failure);
     }
 
     public static void copyToClipboard(String text, Component message) {

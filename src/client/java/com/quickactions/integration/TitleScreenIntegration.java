@@ -14,6 +14,7 @@ import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.network.chat.Component;
@@ -38,7 +39,8 @@ public final class TitleScreenIntegration {
     }
 
     public static void tryAttach(Screen screen) {
-        if (!(screen instanceof TitleScreen)) return;
+        // same buttons on the title screen and on the in game pause menu (ecs)
+        if (!(screen instanceof TitleScreen) && !(screen instanceof PauseScreen)) return;
 
         ScreenEvents.afterExtract(screen).register((s, graphics, mouseX, mouseY, delta) ->
                 render(s, graphics, mouseX, mouseY));

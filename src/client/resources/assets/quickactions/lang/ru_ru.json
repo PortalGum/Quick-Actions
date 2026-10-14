@@ -217,7 +217,7 @@
   "quickactions.notify.restore_new.title": "Мир восстановлен как новый",
   "quickactions.notify.rollback.message": "%s  •  бэкап от %s",
   "quickactions.notify.rollback.title": "Мир откачен",
-  "quickactions.notify.screenshot.copied.message": "Вставь его в чат, Discord или редактор изображений",
+  "quickactions.notify.screenshot.copied.message": "Ваш скриншот успешно скопирован.",
   "quickactions.notify.screenshot.copied.title": "Скриншот скопирован",
   "quickactions.notify.screenshot.delete_failed.message": "Не удалось удалить: %s. Возможно, их использует другая программа.",
   "quickactions.notify.screenshot.delete_failed.title": "Часть файлов не удалена",
@@ -312,7 +312,7 @@
   "quickactions.settings.title": "Настройки Quick Actions",
   "quickactions.settings.tooltip": "Настройки Quick Actions",
   "quickactions.settings.update_check": "Проверка обновлений",
-  "quickactions.settings.update_check.desc": "При запуске игры проверяет Modrinth на наличие новой версии мода и один раз уведомляет об этом, когда вы выходите с главного экрана.",
+  "quickactions.settings.update_check.desc": "Включает уведомления о выходе новых версий мода.",
   "quickactions.settings.world": "Список миров",
   "quickactions.settings.world.desc": "ПКМ по миру открывает быстрые действия: папка мира, бэкап, дублирование и другие. ПКМ по пустому месту показывает все бэкапы.",
 
@@ -371,6 +371,8 @@
   "quickactions.shots.today": "Сегодня",
   "quickactions.shots.viewer.counter": "%s / %s",
   "quickactions.shots.viewer.hint": "← →  листать   ·   Esc  закрыть   ·   Del  удалить",
+  "quickactions.shots.viewer.hint.zoom": "Ctrl + колёсико  масштаб",
+  "quickactions.shots.viewer.hint.zoomed": "ЛКМ  двигать   ·   Двойной клик  сброс   ·   Ctrl + колёсико  масштаб   ·   Esc  закрыть",
   "quickactions.shots.yesterday": "Вчера",
 
   "quickactions.theme.button.done": "Готово",
