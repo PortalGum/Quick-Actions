@@ -10,7 +10,9 @@ Open a folder, copy a path, back up a world, reorder servers, save a pack preset
 > [!NOTE]
 > **Client-side only.** Nothing to install on the server, and it works on any server you join.
 
-<!-- 📸 Main screenshot / GIF: right-click on a world with the Quick Actions submenu open -->
+
+[![Modrinth](https://img.shields.io/badge/Modrinth-View%20Project-1bd96a?style=for-the-badge&logo=modrinth&logoColor=white)](https://modrinth.com/project/T1rCeI8G)
+[![CurseForge](https://img.shields.io/badge/CurseForge-View%20Project-f16436?style=for-the-badge&logo=curseforge&logoColor=white)](https://www.curseforge.com/minecraft/mc-mods/quick-actions-qa)
 
 ---
 
@@ -105,8 +107,6 @@ Right-click empty space: **Disable All Packs**, **Save Preset...**, **Presets...
 
 > [!TIP]
 > **Fix Compatibility** only changes the supported version range in `pack.mcmeta`, so the game stops marking the pack as incompatible. It does **not** update textures: if a pack uses outdated file names, some textures may still not work.
-
-<!-- 📸 Screenshot: Pack Presets screen -->
 
 ---
 
