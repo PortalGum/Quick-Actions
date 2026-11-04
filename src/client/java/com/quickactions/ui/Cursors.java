@@ -1,0 +1,24 @@
+package com.quickactions.ui;
+
+import com.mojang.blaze3d.platform.cursor.CursorTypes;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+
+public final class Cursors {
+    private Cursors() {
+    }
+
+    /** hand cursor for clickable things */
+    public static void hand(GuiGraphicsExtractor g) {
+        g.requestCursor(CursorTypes.POINTING_HAND);
+    }
+
+    /** up and down arrows, wheel autoscroll */
+    public static void resizeVertical(GuiGraphicsExtractor g) {
+        g.requestCursor(CursorTypes.RESIZE_NS);
+    }
+
+    /** four arrows, dragging the zoomed image */
+    public static void move(GuiGraphicsExtractor g) {
+        g.requestCursor(CursorTypes.RESIZE_ALL);
+    }
+}

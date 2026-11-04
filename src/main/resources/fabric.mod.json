@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "quickactions",
+  "version": "${version}",
+  "name": "Quick Actions (QA)",
+  "description": "Quick actions and context menus for Minecraft worlds, servers, and resource packs. Manage files, copy paths, create backups, and more - right where you need them",
+  "authors": ["portal_gum"],
+  "license": "MIT",
+  "contact": {
+    "homepage": "https://modrinth.com/project/T1rCeI8G",
+    "issues": "https://github.com/PortalGum/Quick-Actions/issues"
+  },
+  "icon": "assets/quickactions/icon.png",
+  "environment": "client",
+  "accessWidener": "quickactions.accesswidener",
+  "entrypoints": {
+    "client": ["com.quickactions.QuickActionsClient"],
+    "modmenu": ["com.quickactions.integration.ModMenuIntegration"]
+  },
+  "mixins": [
+    { "config": "minecraft_quick_actions.client.mixins.json", "environment": "client" }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "minecraft": "~26.3",
+    "java": ">=25",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "modmenu": "*"
+  }
+}
