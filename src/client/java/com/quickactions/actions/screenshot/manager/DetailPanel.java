@@ -4,11 +4,11 @@ import com.quickactions.actions.screenshot.ScreenshotInfo;
 import com.quickactions.actions.screenshot.ScreenshotTextures;
 import com.quickactions.actions.screenshot.ScreenshotTextures.Loaded;
 import com.quickactions.actions.screenshot.ScreenshotTextures.Mode;
+import com.quickactions.compat.GuiBlit;
 import com.quickactions.ui.UiText;
 import com.quickactions.ui.theme.Theme;
 import com.quickactions.util.FileOps;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 
 import java.util.List;
@@ -102,12 +102,12 @@ final class DetailPanel {
         if (loaded != null) {
             int w = Math.min(box.w(), loaded.width() / scale);
             int h = Math.min(box.h(), loaded.height() / scale);
-            g.blit(RenderPipelines.GUI_TEXTURED, loaded.id(),
+            GuiBlit.texture(g, loaded.id(),
                     box.x() + (box.w() - w) / 2, box.y() + (box.h() - h) / 2, 0, 0, w, h, w, h);
         } else {
             Loaded fallback = ScreenshotTextures.fallback(info);
             if (fallback != null) {
-                g.blit(RenderPipelines.GUI_TEXTURED, fallback.id(), box.x(), box.y(), 0, 0,
+                GuiBlit.texture(g, fallback.id(), box.x(), box.y(), 0, 0,
                         box.w(), box.h(), box.w(), box.h());
             } else if (ScreenshotTextures.failed(info, Mode.FIT, box.w() * scale, box.h() * scale)) {
                 ShotPaint.broken(g, font(), box.x(), box.y(), box.w(), box.h());

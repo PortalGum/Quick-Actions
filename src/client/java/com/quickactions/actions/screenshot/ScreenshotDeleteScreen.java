@@ -9,7 +9,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.renderer.RenderPipelines;
+import com.quickactions.compat.GuiBlit;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 
@@ -114,13 +114,13 @@ public class ScreenshotDeleteScreen extends Screen {
         if (loaded != null) {
             int w = Math.min(previewW, loaded.width() / scale);
             int h = Math.min(previewH, loaded.height() / scale);
-            g.blit(RenderPipelines.GUI_TEXTURED, loaded.id(),
+            GuiBlit.texture(g, loaded.id(),
                     previewX + (previewW - w) / 2, previewY + (previewH - h) / 2, 0, 0, w, h, w, h);
             return;
         }
         Loaded fallback = ScreenshotTextures.fallback(info);
         if (fallback != null) {
-            g.blit(RenderPipelines.GUI_TEXTURED, fallback.id(), previewX, previewY, 0, 0,
+            GuiBlit.texture(g, fallback.id(), previewX, previewY, 0, 0,
                     previewW, previewH, previewW, previewH);
         }
     }

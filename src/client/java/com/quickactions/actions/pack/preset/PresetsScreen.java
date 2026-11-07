@@ -19,7 +19,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.client.renderer.RenderPipelines;
+import com.quickactions.compat.GuiBlit;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -513,7 +513,7 @@ public class PresetsScreen extends Screen {
     private void drawIcon(GuiGraphicsExtractor g, String id, int x, int y) {
         Identifier icon = icons.get(id);
         if (icon != null) {
-            g.blit(RenderPipelines.GUI_TEXTURED, icon, x, y, 0, 0, ICON, ICON, ICON, ICON);
+            GuiBlit.texture(g, icon, x, y, 0, 0, ICON, ICON, ICON, ICON);
         } else {
             g.fill(x, y, x + ICON, y + ICON, MISSING_BORDER);
             g.fill(x + 1, y + 1, x + ICON - 1, y + ICON - 1, MISSING_TILE);

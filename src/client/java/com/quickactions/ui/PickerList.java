@@ -4,7 +4,7 @@ import com.quickactions.ui.theme.Theme;
 
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.renderer.RenderPipelines;
+import com.quickactions.compat.GuiBlit;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
@@ -322,7 +322,7 @@ public final class PickerList<T> {
     private void drawWorldIcon(GuiGraphicsExtractor g, @Nullable Identifier texture, int x, int y, boolean dimmed) {
         g.fill(x - 1, y - 1, x + WORLD_ICON + 1, y + WORLD_ICON + 1, dimmed ? Theme.borderSoft() : Theme.accentSoft());
         if (texture != null) {
-            g.blit(RenderPipelines.GUI_TEXTURED, texture, x, y, 0, 0, WORLD_ICON, WORLD_ICON, WORLD_ICON, WORLD_ICON);
+            GuiBlit.texture(g, texture, x, y, 0, 0, WORLD_ICON, WORLD_ICON, WORLD_ICON, WORLD_ICON);
             if (dimmed) g.fill(x, y, x + WORLD_ICON, y + WORLD_ICON, 0x66000000); // world is gone: icon is dimmed
         } else {
             g.fill(x, y, x + WORLD_ICON, y + WORLD_ICON, Theme.deep());

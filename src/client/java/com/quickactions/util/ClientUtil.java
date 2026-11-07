@@ -1,13 +1,12 @@
 package com.quickactions.util;
 
-import com.mojang.blaze3d.Blaze3D;
+import com.quickactions.compat.Platform;
 import com.quickactions.ui.notify.Notification;
 import com.quickactions.ui.notify.Notifications;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.AlertScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import org.lwjgl.sdl.SDLMisc;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -16,10 +15,10 @@ public final class ClientUtil {
     private ClientUtil() {
     }
 
-    /** opens a folder/file with the game's own api (Blaze3D.openPath, same thing vanilla "Open Pack Folder" uses) */
+    /** opens a folder/file with the game's own api, which one depends on the game version (see Platform) */
     public static boolean openPath(Path path) {
         try {
-            Blaze3D.openPath(path.toAbsolutePath());
+            Platform.get().openPath(path);
             return true;
         } catch (Exception e) {
             Notifications.failure("Open " + path, e);
@@ -27,12 +26,10 @@ public final class ClientUtil {
         }
     }
 
-    /** opens a link through sdl, main thread only, only called from a button click with a fixed url */
+    /** opens a link, main thread only, only called from a button click with a fixed url */
     public static void openUrl(String url) {
         try {
-            if (!SDLMisc.SDL_OpenURL(url)) {
-                throw new IllegalStateException("SDL_OpenURL failed");
-            }
+            Platform.get().openUrl(url);
         } catch (Exception e) {
             Notifications.failure("Open link " + url, e);
         }

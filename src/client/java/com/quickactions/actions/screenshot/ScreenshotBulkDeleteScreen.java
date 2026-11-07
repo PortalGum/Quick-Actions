@@ -9,7 +9,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.renderer.RenderPipelines;
+import com.quickactions.compat.GuiBlit;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 
@@ -126,11 +126,11 @@ public class ScreenshotBulkDeleteScreen extends Screen {
         int pxH = Math.max(1, Math.round(pxW * tileH / (float) tileW));
         Loaded loaded = ScreenshotTextures.get(info, Mode.FILL, pxW, pxH);
         if (loaded != null) {
-            g.blit(RenderPipelines.GUI_TEXTURED, loaded.id(), x, y, 0, 0, tileW, tileH, tileW, tileH);
+            GuiBlit.texture(g, loaded.id(), x, y, 0, 0, tileW, tileH, tileW, tileH);
         } else {
             Loaded fallback = ScreenshotTextures.fallback(info);
             if (fallback != null) {
-                g.blit(RenderPipelines.GUI_TEXTURED, fallback.id(), x, y, 0, 0, tileW, tileH, tileW, tileH);
+                GuiBlit.texture(g, fallback.id(), x, y, 0, 0, tileW, tileH, tileW, tileH);
             }
         }
 

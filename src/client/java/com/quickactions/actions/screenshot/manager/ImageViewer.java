@@ -5,6 +5,7 @@ import com.quickactions.actions.screenshot.ScreenshotInfo;
 import com.quickactions.actions.screenshot.ScreenshotTextures;
 import com.quickactions.actions.screenshot.ScreenshotTextures.Loaded;
 import com.quickactions.actions.screenshot.ScreenshotTextures.Mode;
+import com.quickactions.compat.GuiBlit;
 import com.quickactions.ui.Clip;
 import com.quickactions.ui.Cursors;
 import com.quickactions.ui.Icons;
@@ -12,7 +13,6 @@ import com.quickactions.ui.MouseButtons;
 import com.quickactions.ui.UiText;
 import com.quickactions.ui.theme.Theme;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 
 import java.util.function.IntConsumer;
@@ -226,7 +226,7 @@ final class ImageViewer {
         } else {
             Loaded fallback = ScreenshotTextures.fallback(info);
             if (fallback != null) {
-                g.blit(RenderPipelines.GUI_TEXTURED, fallback.id(), x, y, 0, 0, w, h, w, h);
+                GuiBlit.texture(g, fallback.id(), x, y, 0, 0, w, h, w, h);
             } else if (ScreenshotTextures.failed(info, Mode.FIT, pxW, pxH)) {
                 ShotPaint.broken(g, font(), x, y, w, h);
             } else {
@@ -287,7 +287,7 @@ final class ImageViewer {
         int top = Math.round(y + (h - zh) / 2f + zoom.panY);
         boolean zoomed = zw != w || zh != h;
         if (zoomed) Clip.begin(g, x, y, x + w, y + h);
-        g.blit(RenderPipelines.GUI_TEXTURED, tex.id(), left, top, 0, 0, zw, zh, zw, zh);
+        GuiBlit.texture(g, tex.id(), left, top, 0, 0, zw, zh, zw, zh);
         if (zoomed) Clip.end(g);
     }
 
@@ -327,7 +327,7 @@ final class ImageViewer {
         int my = y + h - mh - 14;
 
         fillPlate(g, mx - 1, my - 1, mw + 2, mh + 2, withAlpha(Theme.borderStrong() & 0xFFFFFF, a));
-        g.blit(RenderPipelines.GUI_TEXTURED, base.id(), mx, my, 0, 0, mw, mh, mw, mh);
+        GuiBlit.texture(g, base.id(), mx, my, 0, 0, mw, mh, mw, mh);
         g.fill(mx, my, mx + mw, my + mh, withAlpha(0x000000, 0.5f * a));
         g.fill(mx, my, mx + mw, my + mh, withAlpha(VIEWER_BACKDROP, 1f - a)); // fades the thumb itself
 

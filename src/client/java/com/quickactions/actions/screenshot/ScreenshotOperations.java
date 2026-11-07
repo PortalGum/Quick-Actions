@@ -32,10 +32,6 @@ public final class ScreenshotOperations {
     public static void copyPath(ScreenshotTarget target) {
         String path = target.info().file().toAbsolutePath().toString();
         ClientUtil.copyToClipboard(path, Component.translatable("quickactions.toast.path_copied"));
-        Notification.success(Component.translatable("quickactions.toast.path_copied"))
-                .detail(path)
-                .duration(3500)
-                .show();
     }
 
     // ---------- copy image ----------

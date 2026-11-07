@@ -9,7 +9,7 @@ import com.quickactions.ui.Icons;
 import com.quickactions.ui.UiText;
 import com.quickactions.ui.theme.Theme;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.renderer.RenderPipelines;
+import com.quickactions.compat.GuiBlit;
 import net.minecraft.network.chat.Component;
 
 import static com.quickactions.actions.screenshot.manager.GalleryLayout.CHECK_PAD;
@@ -263,7 +263,7 @@ final class GalleryPainter {
 
         Loaded loaded = ScreenshotTextures.get(info, Mode.FILL, pxW, pxH);
         if (loaded != null) {
-            g.blit(RenderPipelines.GUI_TEXTURED, loaded.id(), x, y, 0, 0, w, h, w, h);
+            GuiBlit.texture(g, loaded.id(), x, y, 0, 0, w, h, w, h);
             float fade = 1f - Math.min(1f, (System.currentTimeMillis() - loaded.readyMillis()) / (float) THUMB_FADE_MS);
             if (fade > 0f) {
                 g.fill(x, y, x + w, y + h, withAlpha(Theme.tone(0.022f), fade));
